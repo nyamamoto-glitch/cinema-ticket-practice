@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>テスト採点ツール</title>
+<link rel="stylesheet" href="../assets/style.css">
+<style>
+  .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .stat { background: #efede8; border-radius: 8px; padding: 10px 12px; }
+  .stat .num { font-size: 1.5rem; font-weight: 700; }
+  .stat .lbl { font-size: .8rem; color: var(--muted); }
+  .hit { color: var(--ok); font-weight: 700; }
+  .miss { color: var(--ng); font-weight: 700; }
+  #output { display: none; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  details { margin-top: 8px; }
+  code { background: #efede8; padding: 1px 4px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="site">
+    <h1>テスト採点ツール</h1>
+    <p>テストケースを貼り付けると、仕込まれたバグを何個検出できるかを採点します（ミューテーションテストの考え方）。</p>
+  </header>
+
+  <div class="card">
+    <p style="margin-top:0">次の形式のCSVを貼り付けてください（1行目の見出しは省略可）。</p>
+    <p><code>id,age,date,time,member,3d,count,expected</code></p>
+    <ul class="muted">
+      <li><code>member</code>：none／regular／premium（なし／一般会員／プレミアム会員 も可）</li>
+      <li><code>3d</code>：yes／no</li>
+      <li><code>expected</code>：期待する<strong>合計金額</strong>（数字）。エラーになるべき場合は <code>ERROR</code></li>
+      <li><code>#</code> で始まる行は無視します</li>
+    </ul>
+    <textarea id="csv" rows="12" placeholder="id,age,date,time,member,3d,count,expected&#10;T01,30,2026-11-04,14:00,none,no,1,2000"></textarea>
+    <div class="actions">
+      <button id="run" type="button">採点する</button>
+      <button id="sample" type="button" class="secondary">サンプルを入れる</button>
+    </div>
+  </div>
+
+  <div id="output">
+    <div class="card">
+      <h2 style="margin-top:0">結果</h2>
+      <div class="summary" id="summary"></div>
+      <h3>バグごとの検出状況</h3>
+      <table id="bug-table"></table>
+      <p class="muted">各バグを1つずつ有効にした版に対してテストを実行し、期待値と異なる結果になったテストがあれば「検出」としています。バグの内容は<a href="../docs/answers.html">解答</a>で確認できます。</p>
+    </div>
+    <div class="card" id="invalid-card">
+      <h3 style="margin-top:0">期待値が仕様と一致しないテスト</h3>
+      <p class="muted">正常版で実行しても期待値と一致しなかったテストです。期待値（テストオラクル）の誤りなので、採点から除外しています。</p>
+      <table id="invalid-table"></table>
+    </div>
+    <div class="card" id="error-card">
+      <h3 style="margin-top:0">読み込めなかった行</h3>
+      <table id="error-table"></table>
+    </div>
+  </div>
+
+  <p class="links"><a href="../docs/spec.html">仕様書</a><a href="../index.html">演習トップ</a></p>
+</div>
+
+<script src="../assets/pricing.js"></script>
+<script>
+(function () {
+  'use strict';
+  var P = window.CinemaPricing;
+  var $ = function (id) { return document.getElementById(id); };
+
+  var SAMPLE = [
+    'id,age,date,time,member,3d,count,expected',
+    'T01,30,2026-11-04,14:00,none,no,1,2000',
+    'T02,30,2026-11-04,21:00,regular,no,2,2600',
+    'T03,8,2026-11-07,10:00,none,yes,5,6300',
+    'T04,-1,2026-11-04,14:00,none,no,1,ERROR'
+  ].join('\n');
+
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function splitCsvLine(line) {
+    var out = [], cur = '', q = false;
+    for (var i = 0; i < line.length; i++) {
+      var c = line[i];
+      if (q) {
+        if (c === '"' && line[i + 1] === '"') { cur += '"'; i++; }
+        else if (c === '"') q = false;
+        else cur += c;
+      } else if (c === '"') q = true;
+      else if (c === ',' || c === '\t') { out.push(cur); cur = ''; }
+      else cur += c;
+    }
+    out.push(cur);
+    return out.map(function (s) { return s.trim(); });
+  }
+
+  function parseExpected(v) {
+    var s = String(v).trim();
+    if (/^(error|エラー)$/i.test(s)) return 'ERROR';
+    s = s.replace(/[,，円\s]/g, '');
+    if (/^\d+$/.test(s)) return parseInt(s, 10);
+    return null;
+  }
+
+  function outcome(r) { return r.ok ? r.total : 'ERROR'; }
+  function show(v) { return v === 'ERROR' ? 'ERROR' : Number(v).toLocaleString('ja-JP'); }
+
+  function parse(text) {
+    var tests = [], bad = [];
+    text.split(/\r?\n/).forEach(function (raw, idx) {
+      var line = raw.trim();
+      if (!line || line[0] === '#') return;
+      var cols = splitCsvLine(line);
+      if (cols[0].toLowerCase() === 'id') return; // 見出し行
+      if (cols.length < 8) { bad.push({ line: idx + 1, text: raw, reason: '列が8つありません' }); return; }
+      var exp = parseExpected(cols[7]);
+      if (exp === null) { bad.push({ line: idx + 1, text: raw, reason: 'expected が数字または ERROR ではありません' }); return; }
+      tests.push({
+        id: cols[0] || ('行' + (idx + 1)),
+        input: { age: cols[1], date: cols[2], time: cols[3], member: cols[4], is3d: cols[5], count: cols[6] },
+        expected: exp
+      });
+    });
+    return { tests: tests, bad: bad };
+  }
+
+  function run() {
+    var parsed = parse($('csv').value);
+    var tests = parsed.tests;
+    var valid = [], invalid = [];
+
+    tests.forEach(function (t) {
+      var correct = outcome(P.calculatePrice(t.input, {}));
+      if (correct === t.expected) valid.push(t);
+      else invalid.push({ t: t, correct: correct });
+    });
+
+    var allBugs = {};
+    P.BUG_IDS.forEach(function (b) { allBugs[b] = true; });
+    var failOnPractice = valid.filter(function (t) {
+      return outcome(P.calculatePrice(t.input, allBugs)) !== t.expected;
+    }).length;
+
+    var detected = 0;
+    var rows = P.BUG_IDS.map(function (b) {
+      var flags = {}; flags[b] = true;
+      var killers = valid.filter(function (t) {
+        return outcome(P.calculatePrice(t.input, flags)) !== t.expected;
+      }).map(function (t) { return t.id; });
+      if (killers.length) detected++;
+      return '<tr><td>' + b + '</td><td>' +
+        (killers.length ? '<span class="hit">検出</span>' : '<span class="miss">未検出</span>') +
+        '</td><td>' + esc(killers.join(', ')) + '</td></tr>';
+    });
+
+    $('summary').innerHTML = [
+      ['テスト件数', tests.length],
+      ['有効なテスト', valid.length],
+      ['期待値の誤り', invalid.length],
+      ['演習版で失敗', failOnPractice],
+      ['検出したバグ', detected + ' / ' + P.BUG_IDS.length]
+    ].map(function (s) {
+      return '<div class="stat"><div class="num">' + s[1] + '</div><div class="lbl">' + s[0] + '</div></div>';
+    }).join('');
+
+    $('bug-table').innerHTML = '<tr><th>バグ</th><th>結果</th><th>検出したテスト</th></tr>' + rows.join('');
+
+    $('invalid-card').style.display = invalid.length ? '' : 'none';
+    $('invalid-table').innerHTML = '<tr><th>ID</th><th>入力</th><th>期待値</th><th>仕様どおりの値</th></tr>' +
+      invalid.map(function (x) {
+        var i = x.t.input;
+        return '<tr><td>' + esc(x.t.id) + '</td><td>' +
+          esc([i.age, i.date, i.time, i.member, i.is3d, i.count].join(' / ')) + '</td><td>' +
+          esc(show(x.t.expected)) + '</td><td><details><summary>表示</summary>' + esc(show(x.correct)) + '</details></td></tr>';
+      }).join('');
+
+    $('error-card').style.display = parsed.bad.length ? '' : 'none';
+    $('error-table').innerHTML = '<tr><th>行</th><th>内容</th><th>理由</th></tr>' +
+      parsed.bad.map(function (b) {
+        return '<tr><td>' + b.line + '</td><td>' + esc(b.text) + '</td><td>' + esc(b.reason) + '</td></tr>';
+      }).join('');
+
+    $('output').style.display = 'block';
+  }
+
+  $('run').addEventListener('click', run);
+  $('sample').addEventListener('click', function () { $('csv').value = SAMPLE; });
+})();
+</script>
+</body>
+</html>

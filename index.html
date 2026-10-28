@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>テスト演習：さくらシネマ料金計算</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="site">
+    <h1>テスト演習：さくらシネマ料金計算</h1>
+    <p>架空の映画館のチケット料金計算機能を題材にした、ソフトウェアテストの演習です。</p>
+  </header>
+
+  <div class="card">
+    <h2 style="margin-top:0">演習の内容</h2>
+    <p>演習版の料金計算画面には、<strong>8個のバグ</strong>が仕込まれています。仕様書を読んでテストを設計し、バグを探してください。</p>
+    <table>
+      <tr><th>ページ</th><th>用途</th></tr>
+      <tr><td><a href="docs/spec.html">仕様書</a></td><td>テストのよりどころ。期待結果はすべてここから判断します</td></tr>
+      <tr><td><a href="app/index.html">演習版（バグ入り）</a></td><td>実際に操作してテストする画面</td></tr>
+      <tr><td><a href="checker/index.html">採点ツール</a></td><td>テストケースを貼り付けると、バグを何個検出できるかを採点</td></tr>
+      <tr><td><a href="docs/ai-prompt.html">AI用プロンプト</a></td><td>AIにテストケースを生成させ、人のテストと比較するためのプロンプト</td></tr>
+      <tr><td><a href="correct/index.html">正常版</a></td><td>仕様どおりに動く版（答え合わせ用）</td></tr>
+      <tr><td><a href="docs/answers.html">解答</a></td><td>バグ一覧と解説（演習後に見てください）</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2 style="margin-top:0">進め方</h2>
+    <h3>演習A：手動テスト（初心者向け・30〜60分）</h3>
+    <ol>
+      <li>仕様書を読み、確かめるべき条件を書き出す</li>
+      <li>テストケース（入力と期待結果）を設計する</li>
+      <li>演習版で実行し、期待結果と異なるものをバグとして記録する</li>
+      <li>設計したテストケースを採点ツールで採点し、見逃したバグを振り返る</li>
+    </ol>
+    <h3>演習B：人のテストとAIのテストの比較</h3>
+    <ol>
+      <li>人が仕様書からテストケースを設計する（件数の上限を決めておく）</li>
+      <li>AI用プロンプトで、AIにも同じ件数のテストケースを生成させる</li>
+      <li>両方を採点ツールにかけ、検出したバグと「期待値の誤り」を比べる</li>
+    </ol>
+    <p class="muted">採点ツールは、各バグを1つずつ有効にした版に対してテストを実行し、期待値と異なる結果になったら「検出」と判定します（ミューテーションテストの考え方）。テストが「通るかどうか」ではなく、「バグを見つけられるかどうか」でテストの質を測ります。</p>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>さくらシネマ 料金計算（正常版）</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="site">
+    <h1>さくらシネマ 料金計算<span class="badge correct">正常版</span></h1>
+    <p>仕様どおりに動作する版です。答え合わせに使います。</p>
+  </header>
+
+  <div class="card">
+    <form id="ticket-form" novalidate>
+      <div class="form-row">
+        <label for="age">年齢</label>
+        <input type="text" id="age" name="age" inputmode="numeric" autocomplete="off">
+      </div>
+      <div class="form-row">
+        <label for="date">鑑賞日</label>
+        <input type="date" id="date" name="date">
+      </div>
+      <div class="form-row">
+        <label for="time">上映開始時刻</label>
+        <input type="time" id="time" name="time">
+      </div>
+      <div class="form-row">
+        <label for="member">会員区分</label>
+        <select id="member" name="member">
+          <option value="none">なし</option>
+          <option value="regular">一般会員</option>
+          <option value="premium">プレミアム会員</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label for="is3d">3D上映</label>
+        <label><input type="checkbox" id="is3d" name="is3d"> 3D上映を鑑賞する</label>
+      </div>
+      <div class="form-row">
+        <label for="count">枚数</label>
+        <input type="text" id="count" name="count" inputmode="numeric" value="1" autocomplete="off">
+      </div>
+      <button type="submit">計算する</button>
+      <button type="reset" class="secondary">クリア</button>
+    </form>
+    <div id="result" class="result" role="status" aria-live="polite"></div>
+  </div>
+
+  <p class="links"><a href="../docs/spec.html">仕様書</a><a href="../index.html">演習トップ</a></p>
+</div>
+<script>window.APP_BUGS = {};</script>
+<script src="../assets/pricing.js"></script>
+<script src="../assets/app.js"></script>
+</body>
+</html>
