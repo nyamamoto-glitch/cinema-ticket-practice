@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>講師用ページ</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="site">
+    <h1>講師用ページ</h1>
+    <p>受講者向けの演習トップからはリンクしていないページの一覧です。</p>
+  </header>
+
+  <div class="card">
+    <table>
+      <tr><th>ページ</th><th>用途</th></tr>
+      <tr><td><a href="checker/index.html">採点ツール</a></td><td>テストケース（CSV）を貼り付けると、バグを何個検出できるかを採点</td></tr>
+      <tr><td><a href="docs/ai-prompt.html">AI用プロンプト</a></td><td>AIにテストケースを生成させ、人のテストと比較するためのプロンプト</td></tr>
+      <tr><td><a href="correct/index.html">正常版</a></td><td>仕様どおりに動く版（答え合わせ用）</td></tr>
+      <tr><td><a href="docs/answers.html">解答</a></td><td>バグ一覧と解説</td></tr>
+      <tr><td><a href="index.html">演習トップ（受講者向け）</a></td><td>受講者に案内するページ</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2 style="margin-top:0">演習の進め方（講師用メモ）</h2>
+    <h3>演習A：手動テスト</h3>
+    <ol>
+      <li>受講者に演習トップのURLを案内し、テストケースを設計・実行させる</li>
+      <li>受講者のテストケースを採点ツールの形式（CSV）で集め、採点する</li>
+      <li>解答を使って、見つけたバグ・見逃したバグとテスト技法の対応を振り返る</li>
+    </ol>
+    <h3>演習B：人のテストとAIのテストの比較</h3>
+    <ol>
+      <li>人とAIで、テストケースの件数の上限をそろえる</li>
+      <li>AI用プロンプトで、AIにも同じ件数のテストケースを生成させる</li>
+      <li>両方を採点ツールにかけ、検出したバグと「期待値の誤り」を比べる</li>
+    </ol>
+  </div>
+</div>
+</body>
+</html>
